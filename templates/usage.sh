@@ -19,5 +19,5 @@ Options:
   -h|--help 				: show this usage text
 HEREDOC
 
-  return $return_code
+  exit $return_code
 }

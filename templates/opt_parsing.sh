@@ -10,8 +10,11 @@ set -o errexit -o pipefail -o noclobber -o nounset
 # -use return value from ${PIPESTATUS[0]}, because ! hosed $?
 ! getopt --test > /dev/null
 if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-    echo 'I’m sorry, `getopt --test` failed in this environment.'
-    exit 1
+  echo '`getopt --test` failed in this environment.'
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo 'try running `brew install gnu-getopt` and then putting `export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"` into your shellrc file'
+  fi
+  exit 1
 fi
 
 OPTIONS=dfo:v
@@ -33,38 +36,38 @@ eval set -- "$PARSED"
 d=n f=n v=n outFile=-
 # now enjoy the options in order and nicely split until we see --
 while true; do
-    case "$1" in
-        -d|--debug)
-            d=y
-            shift
-            ;;
-        -f|--force)
-            f=y
-            shift
-            ;;
-        -v|--verbose)
-            v=y
-            shift
-            ;;
-        -o|--output)
-            outFile="$2"
-            shift 2
-            ;;
-        --)
-            shift
-            break
-            ;;
-        *)
-            echo "Programming error"
-            exit 3
-            ;;
-    esac
+  case "$1" in
+    -d|--debug)
+      d=y
+      shift
+      ;;
+    -f|--force)
+      f=y
+      shift
+      ;;
+    -v|--verbose)
+      v=y
+      shift
+      ;;
+    -o|--output)
+      outFile="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Programming error"
+      exit 3
+      ;;
+  esac
 done
 
 # handle non-option arguments
 if [[ $# -ne 1 ]]; then
-    echo "$0: A single input file is required."
-    exit 4
+  echo "$0: A single input file is required."
+  exit 4
 fi
 
 echo "verbose: $v, force: $f, debug: $d, in: $1, out: $outFile"
