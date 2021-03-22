@@ -14,7 +14,7 @@ fix-gcloud-permissions
 Description:
   Fixes those weird, pesky gcloud sdk directory permissions errors you sometimes get.
 
-  Must be run as root or with sudo, due to the sdk directory sometimes accidentally getting chown'd to root.
+  May ask for your sudo password due to the sdk directory sometimes accidentally getting chown'd to root.
 
 Usage:
   fix-gcloud-permissions [-h] [-d <gcloud_dir>]
@@ -25,16 +25,6 @@ Options:
 HEREDOC
 
   exit $return_code
-}
-
-check_root () {
-  uid=$(id -u)
-
-  if [[ "$uid" -ne 0 ]]
-  then
-    echo "fix-gcloud-permissions must be run as root/using sudo" >&2
-    exit 3
-  fi
 }
 
 # More safety, by turning some bugs into errors.
@@ -93,7 +83,5 @@ while true; do
       ;;
   esac
 done
-
-check_root
 
 sudo chown -R $USER $gcloud_dir
