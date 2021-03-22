@@ -1,0 +1,152 @@
+# vim: set syntax=sh :
+#!/bin/bash
+
+# As always, thank you to this stackoverflow for the options parsing template: https://stackoverflow.com/a/29754866
+
+usage () {
+  return_code=$1
+
+  cat <<HEREDOC
+git-fork-upstream
+
+Description:
+  Quickly add your forked git repo as a remote. Must be run in a directory with an active git repository.
+
+Usage:
+  git-fork-upstream [-h] [-n] [-r <remote_name>] <remote_url>
+
+Parameters:
+  <remote_url>           : valid url of a forked git repo
+
+Options:
+  -r|--remote_name <val> : name to give the remote [default: fork]
+  -n|--no_push           : don't push the current branch to the new remote
+  -h|--help              : show this usage text
+HEREDOC
+
+  if [[ "$return_code" -ne -1 ]]
+  then
+    exit $return_code
+  fi
+}
+
+
+check_git_repo () {
+  repo_status=$(git status > /dev/null 2>&1)
+  ret_code=$?
+
+  if [[ "$ret_code" -eq 128 ]]; then
+    echo 'error: not in a git repository. Please run this command in a directory with an initialized git repo'
+    exit $ret_code
+  fi
+}
+
+add_fork_remote () {
+  fork_repo=$1
+
+  res=$((git remote add "$REMOTE_NAME" "$fork_repo") 2>&1)
+
+  ret_code=$?
+
+  if [[ "$ret_code" -ne 0 ]]
+  then
+    echo "error adding remote '$REMOTE_NAME'"
+    echo "$res"
+    exit $ret_code
+  fi
+
+  echo "added remote '$REMOTE_NAME' pointing to '$fork_repo'"
+}
+
+push_fork_remote () {
+  res=$((git push -u "$REMOTE_NAME" "$CURRENT_BRANCH") 2>&1)
+
+  ret_code=$?
+
+  if [[ "$ret_code" -ne 0 ]]
+  then
+    echo "error pushing to remote '$REMOTE_NAME'"
+    echo "$res"
+    exit $ret_code
+  fi
+
+  echo "pushed current branch '$CURRENT_BRANCH' to remote '$REMOTE_NAME'"
+}
+
+check_git_repo
+
+set -o errexit -o pipefail -o noclobber -o nounset
+
+# -allow a command to fail with !’s side effect on errexit
+# -use return value from ${PIPESTATUS[0]}, because ! hosed $?
+! getopt --test > /dev/null
+if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
+  echo '`getopt --test` failed in this environment.'
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo 'try running `brew install gnu-getopt` and then putting `export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"` into your shellrc file'
+  fi
+  exit 1
+fi
+
+REMOTE_NAME='fork'
+CURRENT_BRANCH=$(git branch --show-current)
+NO_PUSH=0
+
+OPTIONS=hnr:
+LONGOPTS=help,no_push,remote_name:
+
+# -regarding ! and PIPESTATUS see above
+# -temporarily store output to be able to check for errors
+# -activate quoting/enhanced mode (e.g. by writing out “--options”)
+# -pass arguments only via   -- "$@"   to separate them correctly
+
+! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
+
+if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+  # e.g. return value is 1
+  #  then getopt has complained about wrong arguments to stdout
+  exit 2
+fi
+# read getopt’s output this way to handle the quoting right:
+eval set -- "$PARSED"
+
+# now enjoy the options in order and nicely split until we see --
+while true; do
+  case "$1" in
+    -h|--help)
+      usage 0
+      ;;
+    -r|--remote_name)
+      REMOTE_NAME="$2"
+      shift 2
+      ;;
+    -n|--no_push)
+      NO_PUSH=1
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      usage 0
+      ;;
+  esac
+done
+
+# handle non-option arguments
+if [[ $# -ne 1 ]]; then
+  usage -1
+  echo ""
+  echo "error: a remote repo url is required" >&2
+  exit 4
+fi
+
+fork_repo="$1"
+
+add_fork_remote $fork_repo
+
+if [[ "$NO_PUSH" -eq 0 ]]
+then
+  push_fork_remote $fork_repo
+fi

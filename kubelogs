@@ -1,0 +1,16 @@
+#!/bin/zsh
+
+NAMESPACE="default"
+CONTAINER_NAME=""
+
+POD_NAME="$1"
+shift
+
+while getopts "n:c:" opt; do
+	case "$opt" in
+		n) NAMESPACE="$OPTARG" ;;
+		c) CONTAINER_NAME="$OPTARG" ;;
+	esac
+done
+
+kubectl logs "$POD_NAME" -n "$NAMESPACE" -c "$CONTAINER_NAME" -f
